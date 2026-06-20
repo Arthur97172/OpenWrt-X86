@@ -14,7 +14,7 @@
 #CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-nekobox"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-aurora-config"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-theme-aurora"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-i18n-aurora-config-zh-cn
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-i18n-aurora-config-zh-cn"
 # VPN
 #CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-tailscale"
 #CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-i18n-tailscale-zh-cn"
