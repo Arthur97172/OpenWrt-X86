@@ -1,6 +1,6 @@
 #!/bin/bash
-# Docker 容器内构建脚本 - OpenWrt 25.12.x x86-64
-# 注意：此脚本在 openwrt/imagebuilder Docker 容器内运行
+# OpenWrt 25.12.x x86-64 构建脚本
+# 在 imagebuilder 目录下运行
 
 ROOTFS_PARTSIZE=${ROOTFS_PARTSIZE:-"2048"}
 INCLUDE_DOCKER=${INCLUDE_DOCKER:-"no"}
@@ -8,7 +8,7 @@ INCLUDE_DOCKER=${INCLUDE_DOCKER:-"no"}
 echo "Rootfs Size: $ROOTFS_PARTSIZE MB"
 echo "Include Docker: $INCLUDE_DOCKER"
 
-# 加载第三方插件配置（使用 25.12 专用配置）
+# 加载第三方插件配置（使用 25.12 配置）
 source shell/apk-custom-packages.sh
 echo "第三方软件包: $CUSTOM_PACKAGES"
 
@@ -16,21 +16,21 @@ echo "第三方软件包: $CUSTOM_PACKAGES"
 echo "$(date '+%Y-%m-%d %H:%M:%S') - 同步第三方软件仓库..."
 git clone --depth=1 https://github.com/wukongdaily/store.git /tmp/store-repo
 
-mkdir -p /home/build/openwrt/extra-packages
-mkdir -p /home/build/openwrt/packages
+mkdir -p extra-packages
+mkdir -p packages
 
 # 复制 x86 的 .run 文件
 if [ -d "/tmp/store-repo/run/x86" ]; then
-    cp -r /tmp/store-repo/run/x86/* /home/build/openwrt/extra-packages/
+    cp -r /tmp/store-repo/run/x86/* extra-packages/
     echo "✅ Run files copied:"
-    ls -lh /home/build/openwrt/extra-packages/*.run 2>/dev/null || echo "无 run 文件"
+    ls -lh extra-packages/*.run 2>/dev/null || echo "无 run 文件"
 else
     echo "⚪️ 无 x86 专用 run 文件"
 fi
 
 # 解压并拷贝 apk/ipk
-sh shell/prepare-packages.sh
-ls -lah /home/build/openwrt/packages/ | tail -5
+sh prepare-packages.sh
+ls -lah packages/ | tail -5
 
 # 复制 25.12.x 自定义源配置进固件
 if [ -f "files/customfeeds/25.customfeeds.conf" ]; then
@@ -40,10 +40,6 @@ if [ -f "files/customfeeds/25.customfeeds.conf" ]; then
 else
     echo "⚪️ 未找到 25.customfeeds.conf，跳过"
 fi
-
-echo "$(date '+%Y-%m-%d %H:%M:%S') - 开始构建固件..."
-echo "查看 repositories 信息——————"
-cat repositories
 
 # 定义所需安装的包列表
 # [注意] libc / libgcc 由 base 系统提供，不单独列出
@@ -98,7 +94,7 @@ else
     echo "⚪️ 未选择 luci-app-openclash"
 fi
 
-# 执行构建（容器内用绝对路径）
+# 执行 make image
 make image PROFILE=generic PACKAGES="$PACKAGES" FILES="files" ROOTFS_PARTSIZE="$ROOTFS_PARTSIZE"
 
 if [ $? -ne 0 ]; then

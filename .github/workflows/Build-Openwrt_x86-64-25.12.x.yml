@@ -11,7 +11,7 @@ on:
         options:
           - '25.12.0'
       ipaddr:
-        description: "请设置软路由的管理地址(注意仅对多网口有效) 格式:192.168.x.1 或 10.x.x.1"
+        description: "请设置管理IP"
         required: true
         default: "192.168.5.1"
       rootfs_partsize:
@@ -38,33 +38,65 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set executable permissions
+      - name: ⚙️ 设置可执行权限
         run: |
-          chmod +x "${{ github.workspace }}/x86/build25.sh"
-          chmod +x "${{ github.workspace }}/shell/prepare-packages.sh"
-          chmod +x "${{ github.workspace }}/shell/apk-custom-packages.sh"
+          chmod +x x86/build25.sh
+          chmod +x shell/prepare-packages.sh
+          chmod +x shell/apk-custom-packages.sh
 
-      - name: ⚙️ Set custom IP config
+      - name: ⚙️ 设置IP、版本号
         run: |
           sed -i "s/版本号/${{ inputs.luci_version }}/g" files/uci-defaults/99-custom.sh
           sed -i "s/__IPADDR__/${{ inputs.ipaddr }}/g" files/uci-defaults/99-custom.sh
           sed -i "s/VERXXXX/${{ inputs.luci_version }}/g" files/uci-defaults/99-custom.sh
           echo "✅ 配置修改完成"
 
-      - name: 🔨 Building OpenWrt 25.12.x x86-64
+      - name: ⏬ 下载 OpenWrt ImageBuilder 25.12.x
         run: |
-          docker run --rm -i \
-            --user root \
-            -v "${{ github.workspace }}/bin:/home/build/openwrt/bin" \
-            -v "${{ github.workspace }}/x86:/home/build/openwrt/x86" \
-            -v "${{ github.workspace }}/shell:/home/build/openwrt/shell" \
-            -v "${{ github.workspace }}/files:/home/build/openwrt/files" \
-            -e INCLUDE_DOCKER=${{ inputs.include_docker }} \
-            -e ROOTFS_PARTSIZE=${{ inputs.rootfs_partsize }} \
-            openwrt/imagebuilder:x86-64-openwrt-${{ inputs.luci_version }} \
-            /bin/bash /home/build/openwrt/x86/build25.sh
+          BUILD_VER="${{ inputs.luci_version }}"
+          URL="https://downloads.openwrt.org/releases/${BUILD_VER}/targets/x86/64/openwrt-imagebuilder-${BUILD_VER}-x86-64.Linux-x86_64.tar.zst"
+          curl -Lf -o imagebuilder.tar.zst "$URL"
+          tar --use-compress-program=unzstd -xvf imagebuilder.tar.zst
+          mv openwrt-imagebuilder-* imagebuilder
 
-      - name: 📜 Generate release info
+      - name: 🔄 复制必备文件
+        run: |
+          cp x86/build25.sh imagebuilder/
+          cp x86/repositories.conf imagebuilder/
+          cp shell/prepare-packages.sh imagebuilder/
+          cp shell/apk-custom-packages.sh imagebuilder/
+          mkdir -p imagebuilder/files/etc/uci-defaults
+          mkdir -p imagebuilder/files/etc/apk
+          cp files/uci-defaults/99-custom.sh imagebuilder/files/etc/uci-defaults/
+          cp -f files/customfeeds/25.customfeeds.conf imagebuilder/files/etc/apk/customfeeds.conf 2>/dev/null || true
+          echo "✅ 文件准备完成"
+
+      - name: ⚙️ 动态获取 Kmod 哈希并更新配置
+        run: |
+          BUILD_VER="${{ inputs.luci_version }}"
+          BASE_URL="https://downloads.openwrt.org/releases/${BUILD_VER}/targets/x86/64/kmods/"
+          echo "正在从 $BASE_URL 获取最新的内核哈希..."
+          KMOD_DIR=$(curl -sL $BASE_URL | grep -oE "[0-9.-]+-[a-f0-9]{32}" | head -n 1)
+          if [ -n "$KMOD_DIR" ]; then
+            FULL_KMOD_URL="${BASE_URL}${KMOD_DIR}"
+            echo "✅ 成功匹配 kmods 路径: $FULL_KMOD_URL"
+            sed -i "s|VERSION_PLACEHOLDER|${BUILD_VER}|g" imagebuilder/repositories.conf
+            sed -i "s|https://.*/kmods/KMOD_PLACEHOLDER|$FULL_KMOD_URL|g" imagebuilder/repositories.conf
+          else
+            echo "❌ 无法获取 Kmod 哈希"
+            exit 1
+          fi
+          cat imagebuilder/repositories.conf | grep "https"
+
+      - name: 🧱 构建 OpenWrt 25.12.x 固件
+        working-directory: ./imagebuilder
+        env:
+          INCLUDE_DOCKER: ${{ inputs.include_docker }}
+          ROOTFS_PARTSIZE: ${{ inputs.rootfs_partsize }}
+        run: |
+          bash ./build25.sh
+
+      - name: 📜 生成发布说明
         run: |
           cat > ${{ github.workspace }}/router-info.md <<EOF
           ## 📡 路由器后台信息
@@ -75,14 +107,15 @@ jobs:
           🐳 Docker状态： ${{ inputs.include_docker == 'yes' && '已集成' || '未集成' }}
           EOF
 
-      - name: 🚀 Upload to Release
+      - name: 🚀 上传到 Release
         uses: softprops/action-gh-release@v2.2.1
         with:
           tag_name: OpenWrt-${{ inputs.luci_version }}-x86-64-RELEASE
           body_path: ${{ github.workspace }}/router-info.md
           overwrite: true
           files: |
-            bin/targets/x86/64/*squashfs-combined-efi.img.gz
+            imagebuilder/bin/targets/x86/64/*squashfs-combined-efi.img.gz
+            imagebuilder/bin/targets/x86/64/sha256sums
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
