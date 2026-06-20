@@ -29,9 +29,14 @@ on:
         options:
           - 'yes'
           - 'no'
-          
+      rootfs_partsize:
+        description: '设置固件大小 单位(MB)'
+        required: true
+        default: '2048'
+
 env:
   VERSION: ${{ inputs.luci_version }}
+  ROOTFS_PARTSIZE: ${{ inputs.rootfs_partsize }}
 
 jobs:
   build:
@@ -110,6 +115,8 @@ jobs:
 
     - name: 🧱 构建OpenWrt固件
       working-directory: ./imagebuilder
+      env:
+        ROOTFS_PARTSIZE: ${{ env.ROOTFS_PARTSIZE }}
       run: |
         bash ./build24.sh
 
