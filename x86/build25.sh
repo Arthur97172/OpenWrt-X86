@@ -9,7 +9,7 @@ echo "Rootfs Size: $ROOTFS_PARTSIZE MB"
 echo "Include Docker: $INCLUDE_DOCKER"
 
 # 加载第三方插件配置（使用 25.12 配置）
-source shell/apk-custom-packages.sh
+source apk-custom-packages.sh
 echo "第三方软件包: $CUSTOM_PACKAGES"
 
 # 同步第三方仓库
@@ -61,10 +61,10 @@ PACKAGES="$PACKAGES kmod-usb-hid kmod-usb-net kmod-usb-net-asix kmod-usb-net-asi
 PACKAGES="$PACKAGES kmod-usb-ohci kmod-usb-ohci-pci kmod-usb2-pci usbutils kmod-mac80211 kmod-mt7921-common kmod-mt7921-firmware kmod-mt7921e kmod-mt7921u kmod-mt7922-firmware kmod-mt7925-common kmod-mt7925-firmware kmod-mt7925e kmod-mt7925u kmod-mt792x-common kmod-mt792x-usb kmod-mt7992-23-firmware kmod-mt7992-firmware kmod-mt7996-233-firmware kmod-mt7996-firmware kmod-mt7996-firmware-common kmod-mt7996e kmod-mtk-t7xx"
 
 # [文件系统]
-PACKAGES="$PACKAGES kmod-fs-f2fs kmod-fs-vfat kmod-nf-nathelper kmod-nf-nathelper-extra kmod-nft-offload kmod-nft-tproxy kmod-xdp-sockets-diag"
+PACKAGES="$PACKAGES kmod-fs-f2fs kmod-fs-vfat kmod-nf-nathelper kmod-nf-nathelper-extra kmod-nft-offload kmod-nft-tproxy"
 
-# [LuCI 界面和主题]
-PACKAGES="$PACKAGES luci-base luci-mod-admin-full luci-theme-argon luci-app-argon-config luci-i18n-argon-config-zh-cn"
+# [LuCI 界面和主题 - argon 系在 OpenWrt 25.12.x 需从自定义源安装，此处注释]
+# PACKAGES="$PACKAGES luci-theme-argon luci-app-argon-config luci-i18n-argon-config-zh-cn"
 
 # [常用插件]
 PACKAGES="$PACKAGES luci-app-samba4 luci-i18n-samba4-zh-cn luci-app-upnp luci-i18n-upnp-zh-cn luci-app-wol luci-i18n-wol-zh-cn luci-app-ddns luci-i18n-ddns-zh-cn luci-app-ttyd luci-i18n-ttyd-zh-cn luci-app-hd-idle luci-i18n-hd-idle-zh-cn luci-i18n-filemanager-zh-cn"

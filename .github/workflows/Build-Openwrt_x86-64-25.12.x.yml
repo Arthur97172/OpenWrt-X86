@@ -62,13 +62,12 @@ jobs:
       - name: 🔄 复制必备文件
         run: |
           cp x86/build25.sh imagebuilder/
-          cp x86/repositories.conf imagebuilder/
+          cp x86/repositories imagebuilder/
           cp shell/prepare-packages.sh imagebuilder/
           cp shell/apk-custom-packages.sh imagebuilder/
           mkdir -p imagebuilder/files/etc/uci-defaults
-          mkdir -p imagebuilder/files/etc/apk
-          cp files/uci-defaults/99-custom.sh imagebuilder/files/etc/uci-defaults/
-          cp -f files/customfeeds/25.customfeeds.conf imagebuilder/files/etc/apk/customfeeds.conf 2>/dev/null || true
+          # 追加自定义源到 APK repositories（FIRMWARE 内 /etc/apk/repositories 会用这个）
+          cat files/customfeeds/25.customfeeds.conf >> imagebuilder/files/etc/apk/repositories
           echo "✅ 文件准备完成"
 
       - name: ⚙️ 动态获取 Kmod 哈希并更新配置
@@ -78,15 +77,16 @@ jobs:
           echo "正在从 $BASE_URL 获取最新的内核哈希..."
           KMOD_DIR=$(curl -sL $BASE_URL | grep -oE "[0-9.-]+-[a-f0-9]{32}" | head -n 1)
           if [ -n "$KMOD_DIR" ]; then
-            FULL_KMOD_URL="${BASE_URL}${KMOD_DIR}"
+            FULL_KMOD_URL="${BASE_URL}${KMOD_DIR}/packages.adb"
             echo "✅ 成功匹配 kmods 路径: $FULL_KMOD_URL"
-            sed -i "s|VERSION_PLACEHOLDER|${BUILD_VER}|g" imagebuilder/repositories.conf
-            sed -i "s|https://.*/kmods/KMOD_PLACEHOLDER|$FULL_KMOD_URL|g" imagebuilder/repositories.conf
+            # 替换 repositories 文件中的占位符
+            sed -i "s|VERSION_PLACEHOLDER|${BUILD_VER}|g" imagebuilder/repositories
+            sed -i "s|KMOD_PLACEHOLDER|${FULL_KMOD_URL}|g" imagebuilder/repositories
           else
             echo "❌ 无法获取 Kmod 哈希"
             exit 1
           fi
-          cat imagebuilder/repositories.conf | grep "https"
+          cat imagebuilder/repositories
 
       - name: 🧱 构建 OpenWrt 25.12.x 固件
         working-directory: ./imagebuilder
