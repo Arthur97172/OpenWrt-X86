@@ -3,7 +3,7 @@
 # 启用第三方插件时取消对应注释
 
 # 文件管理
-#CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-i18n-quickfile-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-i18n-quickfile-zh-cn"
 # 代理相关
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-i18n-clashoo-zh-cn"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-i18n-nikki-zh-cn"
