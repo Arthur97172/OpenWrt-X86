@@ -7,15 +7,18 @@ INCLUDE_DOCKER=${INCLUDE_DOCKER:-"no"}
 echo "Rootfs Size: $ROOTFS_PARTSIZE MB"
 echo "Include Docker: $INCLUDE_DOCKER"
 
-# [重要] 2026.6.21 修复: ImageBuilder 的 repositories 文件只支持 https:// URL
-# 但 make image 支持通过 --extra_packages 参数安装 packages/ 目录下的本地包
-# 所以 APK 文件应该复制到 packages/ 目录，而不是添加到 repositories
-
 # ============================================
 # 步骤1: 加载第三方插件配置
 # ============================================
 CUSTOM_PACKAGES=""
 source apk-custom-packages.sh
+
+# 检查是否有未注释的第三方包（排除空值）
+HAS_CUSTOM_PACKAGES="no"
+if [ -n "$CUSTOM_PACKAGES" ]; then
+    HAS_CUSTOM_PACKAGES="yes"
+    echo "✅ 检测到第三方插件: $CUSTOM_PACKAGES"
+fi
 
 # 定义所需安装的包列表
 # [注意] libc / libgcc 由 base 系统提供，不单独列出
@@ -39,7 +42,7 @@ PACKAGES="$PACKAGES kmod-usb-ohci kmod-usb-ohci-pci kmod-usb2-pci usbutils kmod-
 # [文件系统]
 PACKAGES="$PACKAGES kmod-fs-f2fs kmod-fs-vfat kmod-nf-nathelper kmod-nf-nathelper-extra kmod-nft-offload kmod-nft-tproxy"
 
-# [LuCI 界面和主题 - OpenWrt 25.12.x 需从自定义源安装，此处注释]
+# [LuCI 界面和主题 - OpenWrt 25.12.x 需从自定义源安装]
 PACKAGES="$PACKAGES luci-base luci-i18n-base-zh-cn luci-mod-admin-full luci-theme-material"
 
 # [常用插件]
@@ -52,83 +55,33 @@ if [ "$INCLUDE_DOCKER" = "yes" ]; then
 fi
 
 # ============================================
-# 步骤2: 处理第三方插件
+# 步骤2: 处理第三方插件（仅当存在时）
 # ============================================
-if [ -n "$CUSTOM_PACKAGES" ]; then
-    echo "检测到已选择第三方插件: $CUSTOM_PACKAGES"
+if [ "$HAS_CUSTOM_PACKAGES" = "yes" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - 开始下载第三方APK..."
 
-    # 检查仓库是否已克隆
-    if [ ! -d "/tmp/store-repo/apk/x86_64" ]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - 克隆 OpenWrt-App 仓库..."
-        rm -rf /tmp/store-repo
-        git clone --depth=1 https://github.com/Arthur97172/OpenWrt-App.git /tmp/store-repo || {
-            echo "❌ git clone 失败！"
-            exit 1
-        }
-    fi
+    # 克隆 OpenWrt-App 仓库
+    echo "克隆 OpenWrt-App 仓库..."
+    rm -rf /tmp/store-repo
+    git clone --depth=1 https://github.com/Arthur97172/OpenWrt-App.git /tmp/store-repo || {
+        echo "❌ git clone 失败！"
+        exit 1
+    }
 
-    # 将 APK 文件复制到 packages/ 目录 (ImageBuilder 会自动扫描此目录)
+    # 创建 packages 目录并复制 APK 文件
+    # ImageBuilder 会自动扫描此目录
     mkdir -p packages
-
-    # 复制 x86_64 下的所有 apk 文件
     find /tmp/store-repo/apk/x86_64 -name '*.apk' -exec cp {} packages/ \;
 
     APK_COUNT=$(find packages -name '*.apk' | wc -l)
-    echo "✅ 复制 $APK_COUNT 个APK文件到 packages/ 目录"
+    echo "✅ 复制 $APK_COUNT 个APK到 packages/ 目录"
 
     if [ "$APK_COUNT" -eq 0 ]; then
-        echo "❌ 没有找到APK文件，无法继续"
+        echo "❌ 没有找到APK文件"
         exit 1
     fi
-
-    # 生成APK本地索引 (让 ImageBuilder 能识别本地包)
-    echo "正在生成本地APK索引..."
-
-    # 查找apk工具
-    APK_TOOL=""
-    for path in "./staging_dir/host/bin/apk" "./usr/bin/apk" "$(find /tmp -name 'apk' -type f 2>/dev/null | head -1)"; do
-        if [ -x "$path" ]; then
-            APK_TOOL="$path"
-            break
-        fi
-    done
-
-    if [ -n "$APK_TOOL" ]; then
-        echo "使用apk工具: $APK_TOOL"
-        # 在 packages 目录内生成索引
-        cd packages
-
-        # 生成APK索引
-        $APK_TOOL index -o APKINDEX.tar.gz *.apk 2>/dev/null
-
-        # 签名索引
-        ABUILD_SIGN="${APK_TOOL%/*}/abuild-sign"
-        if [ -x "$ABUILD_SIGN" ]; then
-            $ABUILD_SIGN APKINDEX.tar.gz 2>/dev/null
-            echo "✅ APK索引签名完成"
-        fi
-
-        # 回到 imagebuilder 根目录
-        cd ..
-    else
-        echo "⚠️ 未找到apk工具，跳过索引生成"
-    fi
-
-    # 添加本地包源 (用于安装时)
-    # 注意: 必须添加换行符确保文件格式正确
-    # 2026.6.21 修复: ImageBuilder 支持 file: 协议指向 packages/ 目录
-    if ! grep -q "file:packages" repositories 2>/dev/null; then
-        # 确保文件末尾有换行符
-        [ -n "$(tail -c 1 repositories)" ] && echo "" >> repositories
-        echo "file:packages" >> repositories
-        echo "✅ 已添加本地源 file:packages 到 repositories"
-        cat repositories
-    else
-        echo "⚪️ 本地源已存在，跳过"
-    fi
-
 else
-    echo "⚪️ 未选择第三方插件，跳过第三方仓库同步"
+    echo "⚪️ 无第三方插件，跳过下载"
 fi
 
 # ============================================
