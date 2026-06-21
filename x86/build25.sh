@@ -13,7 +13,7 @@ echo "Include Docker: $INCLUDE_DOCKER"
 CUSTOM_PACKAGES=""
 source apk-custom-packages.sh
 
-# 检查是否有未注释的第三方包（排除空值）
+# 检查是否有未注释的第三方包
 HAS_CUSTOM_PACKAGES="no"
 if [ -n "$CUSTOM_PACKAGES" ]; then
     HAS_CUSTOM_PACKAGES="yes"
@@ -21,7 +21,6 @@ if [ -n "$CUSTOM_PACKAGES" ]; then
 fi
 
 # 定义所需安装的包列表
-# [注意] libc / libgcc 由 base 系统提供，不单独列出
 PACKAGES=""
 
 # [基础系统]
@@ -42,7 +41,7 @@ PACKAGES="$PACKAGES kmod-usb-ohci kmod-usb-ohci-pci kmod-usb2-pci usbutils kmod-
 # [文件系统]
 PACKAGES="$PACKAGES kmod-fs-f2fs kmod-fs-vfat kmod-nf-nathelper kmod-nf-nathelper-extra kmod-nft-offload kmod-nft-tproxy"
 
-# [LuCI 界面和主题 - OpenWrt 25.12.x 需从自定义源安装]
+# [LuCI 界面和主题]
 PACKAGES="$PACKAGES luci-base luci-i18n-base-zh-cn luci-mod-admin-full luci-theme-material"
 
 # [常用插件]
@@ -58,7 +57,7 @@ fi
 # 步骤2: 处理第三方插件（仅当存在时）
 # ============================================
 if [ "$HAS_CUSTOM_PACKAGES" = "yes" ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - 开始下载第三方APK..."
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - 开始处理第三方APK..."
 
     # 克隆 OpenWrt-App 仓库
     echo "克隆 OpenWrt-App 仓库..."
@@ -68,17 +67,64 @@ if [ "$HAS_CUSTOM_PACKAGES" = "yes" ]; then
         exit 1
     }
 
-    # 创建 packages 目录并复制 APK 文件
-    # ImageBuilder 会自动扫描此目录
-    mkdir -p packages
-    find /tmp/store-repo/apk/x86_64 -name '*.apk' -exec cp {} packages/ \;
+    # 创建第三方包目录（不能放到 packages/ 目录，会覆盖 base 包）
+    mkdir -p thirdparty
+    find /tmp/store-repo/apk/x86_64 -name '*.apk' -exec cp {} thirdparty/ \;
 
-    APK_COUNT=$(find packages -name '*.apk' | wc -l)
-    echo "✅ 复制 $APK_COUNT 个APK到 packages/ 目录"
+    APK_COUNT=$(find thirdparty -name '*.apk' | wc -l)
+    echo "✅ 复制 $APK_COUNT 个APK到 thirdparty/ 目录"
 
     if [ "$APK_COUNT" -eq 0 ]; then
         echo "❌ 没有找到APK文件"
         exit 1
+    fi
+
+    # 查找 apk 工具并生成索引
+    echo "生成 APK 索引..."
+    cd thirdparty
+
+    # 查找 apk 工具
+    APK_TOOL=""
+    for path in "$OLDPWD/staging_dir/host/bin/apk" "$OLDPWD/usr/bin/apk" "$(which apk 2>/dev/null)" "/usr/bin/apk"; do
+        if [ -x "$path" ]; then
+            APK_TOOL="$path"
+            break
+        fi
+    done
+
+    # 也检查 ImageBuilder 自带的工具
+    if [ -z "$APK_TOOL" ] && [ -d "$OLDPWD/staging_dir/host/bin" ]; then
+        for f in "$OLDPWD/staging_dir/host/bin/"apk*; do
+            if [ -x "$f" ]; then
+                APK_TOOL="$f"
+                break
+            fi
+        done
+    fi
+
+    if [ -n "$APK_TOOL" ]; then
+        echo "使用 apk 工具: $APK_TOOL"
+
+        # 生成 APK 索引
+        $APK_TOOL index -o APKINDEX.tar.gz *.apk 2>&1
+
+        # 签名索引
+        ABUILD_SIGN="${APK_TOOL%/*}/abuild-sign"
+        if [ -x "$ABUILD_SIGN" ]; then
+            $ABUILD_SIGN APKINDEX.tar.gz 2>&1 || true
+            echo "✅ APK 索引签名完成"
+        fi
+    else
+        echo "⚠️ 未找到 apk 工具，尝试其他方法"
+    fi
+
+    cd "$OLDPWD"
+
+    # 添加本地源到 repositories
+    if ! grep -q "file:thirdparty" repositories 2>/dev/null; then
+        [ -n "$(tail -c 1 repositories)" ] && echo "" >> repositories
+        echo "file:thirdparty" >> repositories
+        echo "✅ 已添加 file:thirdparty 到 repositories"
     fi
 else
     echo "⚪️ 无第三方插件，跳过下载"
