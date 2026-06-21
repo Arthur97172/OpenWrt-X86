@@ -28,8 +28,8 @@ if [ -n "$CUSTOM_PACKAGES" ]; then
 
     # 复制 x86 的 .run 文件
     if [ -d "/tmp/store-repo/run/x86" ]; then
-        mkdir -p /home/build/openwrt/extra-packages
-        cp -r /tmp/store-repo/run/x86/* /home/build/openwrt/extra-packages/
+        mkdir -p /home/runner/work/Openwrt-X86/Openwrt-X86/imagebuilder/extra-packages
+        cp -r /tmp/store-repo/run/x86/* /home/runner/work/Openwrt-X86/Openwrt-X86/imagebuilder/extra-packages/
         echo "✅ Run files copied:"
         ls -lh extra-packages/*.run 2>/dev/null || echo "无 run 文件"
     else
