@@ -67,64 +67,16 @@ if [ "$HAS_CUSTOM_PACKAGES" = "yes" ]; then
         exit 1
     }
 
-    # 创建第三方包目录（不能放到 packages/ 目录，会覆盖 base 包）
-    mkdir -p thirdparty
-    find /tmp/store-repo/apk/x86_64 -name '*.apk' -exec cp {} thirdparty/ \;
+    # 将第三方 APK 复制到 packages/ 目录
+    # packages/ 目录会被 ImageBuilder 自动扫描，第三方包会覆盖同名 base 包
+    find /tmp/store-repo/apk/x86_64 -name '*.apk' -exec cp {} packages/ \;
 
-    APK_COUNT=$(find thirdparty -name '*.apk' | wc -l)
-    echo "✅ 复制 $APK_COUNT 个APK到 thirdparty/ 目录"
+    APK_COUNT=$(find packages -name '*.apk' | wc -l)
+    echo "✅ packages/ 目录现有 $APK_COUNT 个APK文件"
 
     if [ "$APK_COUNT" -eq 0 ]; then
         echo "❌ 没有找到APK文件"
         exit 1
-    fi
-
-    # 查找 apk 工具并生成索引
-    echo "生成 APK 索引..."
-    cd thirdparty
-
-    # 查找 apk 工具
-    APK_TOOL=""
-    for path in "$OLDPWD/staging_dir/host/bin/apk" "$OLDPWD/usr/bin/apk" "$(which apk 2>/dev/null)" "/usr/bin/apk"; do
-        if [ -x "$path" ]; then
-            APK_TOOL="$path"
-            break
-        fi
-    done
-
-    # 也检查 ImageBuilder 自带的工具
-    if [ -z "$APK_TOOL" ] && [ -d "$OLDPWD/staging_dir/host/bin" ]; then
-        for f in "$OLDPWD/staging_dir/host/bin/"apk*; do
-            if [ -x "$f" ]; then
-                APK_TOOL="$f"
-                break
-            fi
-        done
-    fi
-
-    if [ -n "$APK_TOOL" ]; then
-        echo "使用 apk 工具: $APK_TOOL"
-
-        # 生成 APK 索引
-        $APK_TOOL index -o APKINDEX.tar.gz *.apk 2>&1
-
-        # 签名索引
-        ABUILD_SIGN="${APK_TOOL%/*}/abuild-sign"
-        if [ -x "$ABUILD_SIGN" ]; then
-            $ABUILD_SIGN APKINDEX.tar.gz 2>&1 || true
-            echo "✅ APK 索引签名完成"
-        fi
-    else
-        echo "⚠️ 未找到 apk 工具，尝试其他方法"
-    fi
-
-    cd "$OLDPWD"
-
-    # 添加本地源到 repositories
-    if ! grep -q "file:thirdparty" repositories 2>/dev/null; then
-        [ -n "$(tail -c 1 repositories)" ] && echo "" >> repositories
-        echo "file:thirdparty" >> repositories
-        echo "✅ 已添加 file:thirdparty 到 repositories"
     fi
 else
     echo "⚪️ 无第三方插件，跳过下载"
