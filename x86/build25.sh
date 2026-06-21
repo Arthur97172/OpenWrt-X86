@@ -56,7 +56,6 @@ fi
 # ============================================
 # 步骤2: 处理第三方插件（仅当存在时）
 # ============================================
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ "$HAS_CUSTOM_PACKAGES" = "yes" ]; then
     echo "$(date '+%Y-%m-%d %H:%M:%S') - 开始处理第三方APK..."
 
@@ -68,58 +67,55 @@ if [ "$HAS_CUSTOM_PACKAGES" = "yes" ]; then
         exit 1
     }
 
-    # 创建临时目录存放第三方 APK
-    mkdir -p thirdparty
-    for apk in /tmp/store-repo/apk/x86_64/*.apk; do
-        [ -f "$apk" ] && cp "$apk" thirdparty/
-    done
+    # 检查仓库结构
+    echo "📁 仓库目录结构："
+    ls -la /tmp/store-repo/apk/x86_64/
 
-    APK_COUNT=$(find thirdparty -name '*.apk' | wc -l)
-    echo "✅ thirdparty/ 目录现有 $APK_COUNT 个APK文件"
+    # 递归查找所有 APK 文件
+    APK_FILES=$(find /tmp/store-repo/apk/x86_64 -name '*.apk' 2>/dev/null)
+    APK_COUNT=$(echo "$APK_FILES" | wc -l)
+    echo "✅ 找到 $APK_COUNT 个APK文件"
 
     if [ "$APK_COUNT" -eq 0 ]; then
         echo "❌ 没有找到APK文件"
+        ls -la /tmp/store-repo/apk/x86_64/*/
         exit 1
     fi
 
-    # 查找 apk 工具（ImageBuilder 或系统）
+    # 复制所有 APK 到 packages/ 目录
+    echo "复制 APK 到 packages/ 目录..."
+    find /tmp/store-repo/apk/x86_64 -name '*.apk' -exec cp {} packages/ \;
+
+    echo "✅ packages/ 目录现有 $(find packages -name '*.apk' | wc -l) 个APK文件"
+
+    # 生成 APK 索引
+    echo "生成 APK 本地索引..."
+    cd packages
+
+    # 查找 apk 工具
     APK_TOOL=""
-    for path in "$SCRIPT_DIR/staging_dir/host/bin/apk" "/usr/bin/apk" "/usr/local/bin/apk"; do
+    for path in "../staging_dir/host/bin/apk" "/usr/bin/apk"; do
         if [ -x "$path" ]; then
             APK_TOOL="$path"
             break
         fi
     done
 
-    # 使用 apk 工具生成本地索引
-    echo "生成 APK 本地索引..."
     if [ -n "$APK_TOOL" ]; then
         echo "使用 apk 工具: $APK_TOOL"
-        cd thirdparty
         # 生成索引，跳过签名检查
-        $APK_TOOL index --output APKINDEX.tar.gz --no-check-signature *.apk 2>&1
-        cd "$SCRIPT_DIR"
+        $APK_TOOL index --output APKINDEX.tar.gz --no-check-signature *.apk 2>&1 || {
+            echo "⚠️ APK 索引生成返回非零，尝试其他方法..."
+            # 尝试不带签名检查但加 --force 选项
+            $APK_TOOL index --output APKINDEX.tar.gz --no-check-signature --force *.apk 2>&1 || true
+        }
     else
-        echo "⚠️ 未找到 apk 工具，跳过索引生成"
-        # 安装 apk-tools
-        echo "尝试安装 apk-tools..."
-        apt-get update -qq 2>/dev/null && apt-get install -y -qq apk-tools 2>/dev/null
-        if [ -x "/usr/bin/apk" ]; then
-            APK_TOOL="/usr/bin/apk"
-            cd thirdparty
-            $APK_TOOL index --output APKINDEX.tar.gz --no-check-signature *.apk 2>&1
-            cd "$SCRIPT_DIR"
-        fi
+        echo "⚠️ 未找到 apk 工具"
     fi
 
-    # 复制第三方 APK 和索引到 packages/ 目录
-    cp thirdparty/*.apk packages/ 2>/dev/null || true
-    if [ -f thirdparty/APKINDEX.tar.gz ]; then
-        cp thirdparty/APKINDEX.tar.gz packages/
-        echo "✅ 已复制 APKINDEX.tar.gz 到 packages/"
-    fi
+    cd ..
 
-    echo "✅ packages/ 目录现有 $(find packages -name '*.apk' | wc -l) 个APK文件"
+    echo "✅ APK 处理完成"
 else
     echo "⚪️ 无第三方插件，跳过下载"
 fi
