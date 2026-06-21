@@ -24,23 +24,23 @@ if [ -n "$CUSTOM_PACKAGES" ]; then
         git -C /tmp/store-repo pull --ff-only || {
             echo "❌ git pull 失败，删除旧仓库重新 clone..."
             rm -rf /tmp/store-repo
-            git clone --depth=1 https://github.com/wukongdaily/apk.git /tmp/store-repo
+            git clone --depth=1 https://github.com/Arthur97172/OpenWrt-App.git /tmp/store-repo
         }
     else
-        git clone --depth=1 https://github.com/wukongdaily/apk.git /tmp/store-repo || {
+        git clone --depth=1 https://github.com/Arthur97172/OpenWrt-App.git /tmp/store-repo || {
             echo "❌ git clone 失败！"
             exit 1
         }
     fi
 
     # 检查 clone 结果
-    if [ ! -d "/tmp/store-repo/run/x86" ]; then
+    if [ ! -d "/tmp/store-repo/apk/x86_64" ]; then
         echo "❌ 仓库结构异常，run/x86 目录不存在"
         exit 1
     fi
 
     # 复制 x86 的所有内容（.run 文件和 .apk 目录）
-    cp -r /tmp/store-repo/run/x86/* extra-packages/
+    cp -r /tmp/store-repo/apk/x86_64/* extra-packages/
     echo "✅ Run/apk 文件已复制到 extra-packages/"
 
     # 解压并拷贝 apk/ipk 到 packages/
