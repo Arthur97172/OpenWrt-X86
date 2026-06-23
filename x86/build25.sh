@@ -121,11 +121,25 @@ if [ "$THIRD_PARTY_OK" = "1" ]; then
 
     APK_BIN="staging_dir/host/bin/apk"
     if [ -x "$APK_BIN" ]; then
-        echo "🔧 显式重建 packages.adb 索引(不再依赖 IB 的静默自动重建)..."
-        if ! (cd packages && ../"$APK_BIN" mkndx --allow-untrusted --output packages.adb *.apk); then
+        # 显式构造 apk 文件参数,避免 shell glob *.apk 在某种环境下不展开时 mkndx 收到零个参数,
+        # 它会让你意外得到一个 signed-but-empty 的 packages.adb(从而触发 installing packages
+        # 阶段 "package mentioned in index not found" 这种误导性错误)。
+        APK_ARGS=""
+        for f in packages/*.apk; do
+            [ -e "$f" ] || continue
+            APK_ARGS="$APK_ARGS $(basename "$f")"
+        done
+        PKG_COUNT=$(echo $APK_ARGS | wc -w)
+        echo "🔧 显式重建 packages.adb 索引(待索引 apk 数量: $PKG_COUNT)..."
+        if [ "$PKG_COUNT" -eq 0 ]; then
+            echo "⚠️ packages/ 是空的,没有 apk 可索引,跳过"
+        elif (cd packages && ../"$APK_BIN" mkndx --allow-untrusted --output packages.adb $APK_ARGS); then
+            echo "✅ packages.adb 已就绪 ($PKG_COUNT 个 apk)"
+        else
             echo "⚠️ mkndx 整体失败,逐个诊断损坏的 apk ..."
             BAD=""
             for f in packages/*.apk; do
+                [ -e "$f" ] || continue
                 if ! (cd packages && ../"$APK_BIN" mkndx --allow-untrusted --output packages.adb "$(basename "$f")"); then
                     echo "  ✗ 损坏: $f"
                     BAD="$BAD $f"
@@ -135,13 +149,18 @@ if [ "$THIRD_PARTY_OK" = "1" ]; then
                 echo "🚮 暂时移出损坏的 apk: $BAD"
                 mkdir -p packages/.bad
                 mv $BAD packages/.bad/
-                (cd packages && ../"$APK_BIN" mkndx --allow-untrusted --output packages.adb *.apk) || {
+                APK_ARGS=""
+                for f in packages/*.apk; do
+                    [ -e "$f" ] || continue
+                    APK_ARGS="$APK_ARGS $(basename "$f")"
+                done
+                if (cd packages && ../"$APK_BIN" mkndx --allow-untrusted --output packages.adb $APK_ARGS); then
+                    echo "✅ 已用剩余的健康 apk 重建索引(损坏 apk 的功能将不可用)"
+                else
                     echo "⚠️ 即便移出损坏的 apk 后仍无法生成索引,继续依赖 IB 的自动重建"
-                }
-                echo "✅ 已用剩余的健康 apk 重建索引(损坏 apk 的功能将不可用)"
+                fi
             fi
         fi
-        echo "✅ packages.adb 已就绪"
     else
         echo "⚠️ 找不到 $APK_BIN,继续依赖 IB 自动重建(不推荐)"
     fi
