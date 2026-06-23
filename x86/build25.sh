@@ -82,39 +82,20 @@ if [ "$HAS_CUSTOM_PACKAGES" = "yes" ]; then
         exit 1
     fi
 
-    # 生成 APK 索引（允许不受信任的签名）
-    echo "生成 APK 本地索引..."
-    cd thirdparty
+    # 把第三方 APK 物理放入 ImageBuilder 的 packages/ 目录。
+    # 25.12+ ImageBuilder 在执行 `make image` 前会检查 packages/packages.adb
+    # 是否缺失或过期,如果会自动重建:
+    #   (cd packages; apk mkndx --allow-untrusted --output packages.adb *.apk)
+    # 见 ImageBuilder 的 Makefile:213-215、232-236。所以这里无需手动跑 apk index。
+    echo "复制第三方 APK 到 imagebuilder/packages/ ..."
+    mkdir -p packages
+    # 用 cp -n 防覆盖已有的基础包(kernel/libc/base-files 等)
+    cp -n thirdparty/*.apk packages/ 2>/dev/null \
+        || cp thirdparty/*.apk packages/
 
-    # 查找 apk 工具
-    APK_TOOL="../staging_dir/host/bin/apk"
-    if [ ! -x "$APK_TOOL" ]; then
-        APK_TOOL=""
-    fi
-
-    if [ -n "$APK_TOOL" ]; then
-        echo "使用 apk 工具: $APK_TOOL"
-        # 生成索引，允许不可信的签名
-        $APK_TOOL index --output APKINDEX.tar.gz --allow-untrusted *.apk 2>&1
-        
-        if [ -f APKINDEX.tar.gz ]; then
-            echo "✅ APK 索引生成成功"
-            # 复制索引到 packages/ 目录
-            cp APKINDEX.tar.gz ../packages/
-        else
-            echo "⚠️ APK 索引生成失败，尝试不带 --allow-untrusted..."
-            $APK_TOOL index --output APKINDEX.tar.gz *.apk 2>&1 || true
-            if [ -f APKINDEX.tar.gz ]; then
-                cp APKINDEX.tar.gz ../packages/
-            fi
-        fi
-    else
-        echo "⚠️ 未找到 apk 工具"
-    fi
-
-    cd ..
-
-    echo "✅ APK 处理完成"
+    PKG_IN_POOL=$(ls packages/ | wc -l)
+    echo "✅ 第三方 APK 已合并到 packages/ (池中现共 $PKG_IN_POOL 个文件)"
+    echo "✅ packages.adb 将在 make image 阶段由 ImageBuilder 自动重建"
 else
     echo "⚪️ 无第三方插件，跳过下载"
 fi
