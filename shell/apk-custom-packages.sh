@@ -6,6 +6,8 @@
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES clashoo luci-app-clashoo luci-i18n-clashoo-zh-cn"
 # 代理相关 (nikki全家桶)
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki luci-i18n-nikki-zh-cn"
+# 代理相关 (openclash)
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
 # 主题
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-aurora-config luci-theme-aurora luci-i18n-aurora-config-zh-cn"
 # VPN
