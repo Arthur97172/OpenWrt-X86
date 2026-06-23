@@ -279,42 +279,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - 编译包列表:"
 echo "$PACKAGES"
 
 # ============================================
-# 步骤4: 特殊处理(openclash等需要额外文件)
-# ============================================
-#if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
-#    echo "✅ 已选择 luci-app-openclash，添加 openclash core"
-#    mkdir -p files/etc/openclash/core
-#    META_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64.tar.gz"
-#    wget -qO- $META_URL | tar xOvz > files/etc/openclash/core/clash_meta
-#    chmod +x files/etc/openclash/core/clash_meta
-#    wget -q https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat -O files/etc/openclash/GeoIP.dat
-#    wget -q https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat -O files/etc/openclash/GeoSite.dat
-#else
-#    echo "⚪️ 未选择 luci-app-openclash"
-#fi
-
-# ============================================
-# 步骤5: 关闭 apk 签名校验
-#
-# IB 25.12 .config 默认 CONFIG_SIGNATURE_CHECK=y。我们的第三方 apk
-# 由不同作者发布,不一定用 OpenWrt/ImmortalWrt 的 CA key 签名,IB
-# 的 apk add 读 packages.adb 时会判 UNTRUSTED 整库丢弃:
-#   WARNING: opening packages/packages.adb: UNTRUSTED signature
-#   OK: 0 B in 0 packages  → "no such package"
-#
-# `make image CONFIG_SIGNATURE_CHECK=` 在我们的 GHA 环境下**不能**
-# 让 apk add 真的接收 --allow-untrusted,因为 IB Makefile line 357:
-#   (unset PROFILE FILES PACKAGES MAKEFLAGS; $(MAKE) -s _call_image ...)
-# 在 child make 之前 `unset MAKEFLAGS`,把 cmdline override 抹掉;
-# child make 重新读 .config(.config line 234: CONFIG_SIGNATURE_CHECK=y),
-# 不再是空, $(if $(CONFIG_SIGNATURE_CHECK),,--allow-untrusted) 退化成
-# strict-mode, apk add 仍判 UNTRUSTED。
-#
-# 已本地严格模拟该链路复现:
-#   make image CONFIG_SIGNATURE_CHECK=
-#     → child: CONFIG=[y] APK=[...]                  ← broken
-# 改方案: 直接 sed 改 .config 把 CONFIG_SIGNATURE_CHECK 设为空,parent
-# 和 child 都读到空, apk add 拿到 --allow-untrusted, 接受我们的 adb。
+# 步骤4: 备份 config.bak
 # ============================================
 if [ -f .config ] && grep -q "^CONFIG_SIGNATURE_CHECK=y" .config; then
     cp .config .config.bak.imm
