@@ -126,6 +126,40 @@ if [ "$THIRD_PARTY_OK" = "1" ]; then
         APK_SIGN_KEY="$APK_KEYS_DIR/build_key.apk.sec"
     fi
 
+    # 在 mkndx 之前预生成 EC key,与 IB Makefile 的 _check_keys 目标
+    # (target/imagebuilder/files/Makefile line ~344) 用完全相同的方式。
+    # 原因: IB `make image:` 先 (1) _check_profile (2) _check_keys (3) _call_image,
+    # keys 是在 mkndx 之前才创建。如果我们的 mkndx 跑得比 make image 早(就是
+    # 当前 build25.sh 的执行位置), key 还不存在,我们的 mkndx 实际产出的 adb
+    # 是**未签名**的。后面 apk add 时用 IB 后生成的 key 去验证,签名不匹配:
+    #   WARNING: opening packages.adb: UNTRUSTED signature
+    #   OK: 0 B in 0 packages → "package mentioned in index not found"
+    # 先动手生成 keys 解决这个时序问题。IB 的 _check_keys 见到 keys 已存在
+    # 会直接跳过,不会重复生成。
+    OPENSSL_BIN="staging_dir/host/bin/openssl"
+    NE_KEY="$APK_KEYS_DIR/local-private-key.pem"
+    NEED_KEY_GEN=0
+    if [ ! -s "$NE_KEY" ] && [ ! -s "$APK_KEYS_DIR/build_key.apk.sec" ]; then
+        NEED_KEY_GEN=1
+    fi
+    if [ "$NEED_KEY_GEN" = "1" ] && [ -x "$OPENSSL_BIN" ]; then
+        echo "🔑 预生成 EC 签名 key(与 IB _check_keys 一致)..."
+        mkdir -p "$APK_KEYS_DIR"
+        if ! "$OPENSSL_BIN" ecparam -name prime256v1 -genkey -noout -out "$NE_KEY" 2>/dev/null; then
+            echo "⚠️ ecparam 生成私钥失败,继续依赖 IB 的 _check_keys"
+        else
+            # IB line 347: sed -i '1s/^/untrusted comment: Local build key\n/'
+            sed -i '1s/^/untrusted comment: Local build key\n/' "$NE_KEY" 2>/dev/null
+            if "$OPENSSL_BIN" ec -in "$NE_KEY" -pubout > "$APK_KEYS_DIR/local-public-key.pem" 2>/dev/null; then
+                sed -i '1s/^/untrusted comment: Local build key\n/' "$APK_KEYS_DIR/local-public-key.pem" 2>/dev/null
+                ls -la "$APK_KEYS_DIR/"
+                echo "✅ EC key 就绪:$NE_KEY"
+            else
+                echo "⚠️ 导出公钥失败,继续依赖 IB 的 _check_keys"
+            fi
+        fi
+    fi
+
     # 在 IB 子目录内运行 ../staging_dir/host/bin/apk mkndx。
     # 因为 (cd packages && ...) 改了 cwd,--keys-dir/--sign 相对于
     # process cwd 解析,所以这里把它们展开为绝对路径。
