@@ -6,14 +6,14 @@ on:
       luci_version:
         description: "选择luci版本"
         required: false
-        default: "25.12.4"
+        default: "25.12.5"
         type: choice
         options:
           - '25.12.0'
           - '25.12.1'
           - '25.12.2'
           - '25.12.3'
-          - '25.12.4'
+          - '25.12.5'
       ipaddr:
         description: "请设置管理IP"
         required: true
