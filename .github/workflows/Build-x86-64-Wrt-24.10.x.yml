@@ -87,7 +87,6 @@ jobs:
 
     - name: ⏬ 下载 ImageBuilder
       run: |
-        BUILD_VER="${{ env.VERSION }}"
         URL="https://downloads.${{ env.FINAL_WRT }}.org/releases/${{ env.FINAL_LUCI_VER }}/targets/x86/64/${{ env.FINAL_WRT }}-imagebuilder-${{ env.FINAL_LUCI_VER }}-x86-64.Linux-x86_64.tar.zst"
         curl -Lf -o imagebuilder.tar.zst "$URL"
         tar --use-compress-program=unzstd -xvf imagebuilder.tar.zst
@@ -144,7 +143,7 @@ jobs:
         ROOTFS_PARTSIZE: ${{ env.ROOTFS_PARTSIZE }}
         INCLUDE_DOCKER: ${{ inputs.include_docker }}
       run: |
-        bash ./build24.sh "${{ inputs.profile }}" "${{ inputs.rootfs_partsize }}"
+        bash ./build24.sh "${{ inputs.rootfs_partsize }}"
 
     - name: 📜 生成发布说明
       run: |
