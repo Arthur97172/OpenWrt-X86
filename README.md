@@ -4,7 +4,7 @@
   <img src="files/screenshot/banner.svg" width="100%" />
 </p>
 
-  <h1>基于OpenWrt Imagebuilder X86-64</h1>
+  <h1>基于Immortalwrt and OpenWrt Imagebuilder X86-64</h1>
 
   <img src="https://img.shields.io/github/downloads/Arthur97172/ImmortalWrt-X86/total.svg?style=for-the-badge&color=32C955"/>
   <img src="https://img.shields.io/github/stars/Arthur97172/ImmortalWrt-X86.svg?style=for-the-badge&color=orange"/>
