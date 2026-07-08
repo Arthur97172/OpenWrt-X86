@@ -70,6 +70,11 @@ jobs:
           chmod +x shell/prepare-packages.sh
           chmod +x shell/apk-custom-packages.sh
 
+      - name: 🛠️ 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-utils genisoimage
+
       - name: ⚙️ 设置IP、版本号
         run: |
           sed -i "s/版本号/${{ env.FINAL_LUCI_VER }}/g" files/uci-defaults/99-custom.sh
