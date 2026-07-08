@@ -92,7 +92,7 @@ jobs:
             cp x86/openwrt-repositories imagebuilder/repositories
             cp shell/apk-openwrt-custom-packages.sh imagebuilder/
           else
-            cp immortalwrt-repositories imagebuilder/repositories
+            cp x86/immortalwrt-repositories imagebuilder/repositories
             cp shell/apk-immortalwrt-custom-packages.sh imagebuilder/
           fi          
           cp shell/prepare-packages.sh imagebuilder/
