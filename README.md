@@ -4,7 +4,7 @@
   <img src="./files/screenshot/banner.svg" style="max-width: 100%; height: auto;" />
 </p>
 
-  <h1>基于Immortalwrt and OpenWrt Imagebuilder X86-64</h1>
+  <h1>基于Immortalwrt and OpenWrt X86-64</h1>
 
   <img src="https://img.shields.io/github/downloads/Arthur97172/ImmortalWrt-X86/total.svg?style=for-the-badge&color=32C955"/>
   <img src="https://img.shields.io/github/stars/Arthur97172/ImmortalWrt-X86.svg?style=for-the-badge&color=orange"/>
@@ -21,7 +21,8 @@
   </div>
   
 ## 🤔 项目介绍 [![](https://img.shields.io/badge/-项目介绍-FFFFFF.svg)](#-项目介绍-)
-**目标是提供一个纯净的OpenlWrt系统，支持24.10.x和25.12.x版本编译，并可选择是否包含Docker。**
+**目标是提供一个纯净的ImmortalWrt and OpenlWrt系统，支持24.10.x和25.12.x版本编译，并可选择是否包含Docker。**
+
 ***编译快速，基本上15分钟就可以完成编译工作。***
 > [!TIP]
 > 😂此固件为 **非官方构建，不保证完全无BUG** ，请知悉😂
@@ -53,7 +54,8 @@
 > **"您的每一个⭐️，都是开源土壤里的一缕阳光，让灵感发芽，让创造生长~"**
 
 ## 🎉 Thanks [![](https://img.shields.io/badge/-Thanks-FFFFFF.svg)](#-Thanks-)
-- [Openwrt](https://github.com/Openwrt)
+- [OpenWrt](https://github.com/Openwrt)
+- [ImmortalWrt](https://github.com/immortalwrt)
 
 
 ## 🙏 免责声明 [![](https://img.shields.io/badge/-免责声明-FFFFFF.svg)](#-免责声明-)
