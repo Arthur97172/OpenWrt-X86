@@ -143,7 +143,7 @@ jobs:
         ROOTFS_PARTSIZE: ${{ env.ROOTFS_PARTSIZE }}
         INCLUDE_DOCKER: ${{ inputs.include_docker }}
       run: |
-        bash ./build24.sh "${{ inputs.rootfs_partsize }}"
+        bash ./build24.sh
 
     - name: 📜 生成发布说明
       run: |
