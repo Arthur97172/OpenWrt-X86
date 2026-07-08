@@ -99,10 +99,10 @@ jobs:
 
         if [ "${{ env.FINAL_WRT }}" = "openwrt" ]; then
           cp x86/openwrt-repositories.conf imagebuilder/repositories.conf
-          cp shell/openwrt-custom-packages.sh imagebuilder/
+          cat shell/openwrt-custom-packages.sh >> imagebuilder/custom-packages.sh
         else
           cp x86/immortalwrt-repositories.conf imagebuilder/repositories.conf
-          cp shell/immortalwrt-custom-packages.sh imagebuilder/
+          cat shell/immortalwrt-custom-packages.sh >> imagebuilder/custom-packages.sh
         fi
         
         cp shell/prepare-packages.sh imagebuilder/
