@@ -84,7 +84,6 @@ jobs:
       run: |
         CONFIG_PATH="./files/uci-defaults/99-custom.sh"
         sed -i "s/版本号/${{ env.FINAL_LUCI_VER }}/g" "$CONFIG_PATH"
-        [ -f "./files/etc/banner" ] && sed -i "s/版本号/${{ env.FINAL_LUCI_VER }}/g" "./files/etc/banner"
         sed -i "s/__IPADDR__/${{ inputs.ipaddr }}/g" "$CONFIG_PATH"
         sed -i "s/WRTVERSIONINFO/${{ env.WRT_NAME }}/g" "$CONFIG_PATH"
         sed -i "s/VERXXXX/${{ env.FINAL_LUCI_VER }}/g" "$CONFIG_PATH"
