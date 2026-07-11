@@ -52,6 +52,7 @@ env:
   # 判断：如果选了 immortalwrt，且版本不是 25.12.0和25.12.1（包含25.12.2~5），就强制降级为 25.12.1；否则保持用户选择
   FINAL_LUCI_VER: ${{ (inputs.wrt_version == 'immortalwrt' && inputs.luci_version != '25.12.0' && inputs.luci_version != '25.12.1') && '25.12.1' || inputs.luci_version }}
   FINAL_WRT: ${{ inputs.wrt_version }}
+  WRT_NAME: ${{ (inputs.wrt_version == 'openwrt') && 'OpenWrt' || 'ImmortalWrt' }}
   ROOTFS_PARTSIZE: ${{ inputs.rootfs_partsize }}
   DOCKER: ${{ inputs.include_docker }}
 
@@ -80,9 +81,11 @@ jobs:
 
       - name: ⚙️ 设置IP、版本号
         run: |
-          sed -i "s/版本号/${{ env.FINAL_LUCI_VER }}/g" files/uci-defaults/99-custom.sh
-          sed -i "s/__IPADDR__/${{ inputs.ipaddr }}/g" files/uci-defaults/99-custom.sh
-          sed -i "s/VERXXXX/${{ env.FINAL_LUCI_VER }}/g" files/uci-defaults/99-custom.sh
+          CONFIG_PATH="./files/uci-defaults/99-custom.sh"
+          sed -i "s/版本号/${{ env.FINAL_LUCI_VER }}/g" "$CONFIG_PATH"
+          sed -i "s/__IPADDR__/${{ inputs.ipaddr }}/g" "$CONFIG_PATH"
+          sed -i "s/WRTVERSIONINFO/${{ env.WRT_NAME }}/g" "$CONFIG_PATH"
+          sed -i "s/VERXXXX/${{ env.FINAL_LUCI_VER }}/g" "$CONFIG_PATH"
           echo "✅ 配置修改完成"
 
       - name: ⏬ 下载 OpenWrt ImageBuilder 25.12.x
